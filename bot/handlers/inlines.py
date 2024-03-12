@@ -1,4 +1,3 @@
-from html import escape
 from uuid import uuid4
 
 from telegram import (
@@ -10,7 +9,6 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from bot import generators
-from bot import keyboards
 from bot.main import pb
 from db import models
 from db.main import sessionmanager
@@ -55,7 +53,7 @@ async def inline_any(
     for cafe in response.cafes:
         serialized_cafe = (
             await generators.generate_cafe_card(
-                cafe
+                cafe, True
             )
         )
         res.append(
@@ -65,9 +63,10 @@ async def inline_any(
                 input_message_content=InputTextMessageContent(
                     serialized_cafe,
                     parse_mode=ParseMode.HTML,
-
                 ),
             ),
         )
 
-    await update.inline_query.answer(res)
+    await update.inline_query.answer(
+        res, cache_time=0
+    )

@@ -44,10 +44,10 @@ async def message_location(
         context.user_data["cafes"].append(
             serialized_cafe
         )
-        context.user_data['cafes_coords'].append(
+        context.user_data["cafes_coords"].append(
             {
                 "latitude": cafe.latitude,
-                "longitude": cafe.longitude
+                "longitude": cafe.longitude,
             }
         )
     context.user_data["selected_cafe"] = 0
@@ -55,8 +55,12 @@ async def message_location(
         await keyboards.get_cafe_card_buttons(
             1,
             len(context.user_data["cafes"]),
-            context.user_data["cafes_coords"][0].get('latitude'),
-            context.user_data["cafes_coords"][0].get('longitude')
+            context.user_data["cafes_coords"][
+                0
+            ].get("latitude"),
+            context.user_data["cafes_coords"][
+                0
+            ].get("longitude"),
         )
     )
     await update.message.reply_text(

@@ -11,7 +11,6 @@ from telegram.ext import (
     CommandHandler,
     InlineQueryHandler,
     MessageHandler,
-    ChatMemberHandler,
     filters,
 )
 from app import settings

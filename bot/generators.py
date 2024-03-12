@@ -1,5 +1,4 @@
 import json
-import math
 from html import escape
 
 
@@ -18,13 +17,14 @@ async def return_emoji(distance):
         return "🛫"
 
 
-async def generate_cafe_card(cafe):
+async def generate_cafe_card(cafe, from_me=False):
     msg = f"<b>{escape(cafe.name)}</b>\n\n"
     if cafe.review.title:
         msg += f"{escape(cafe.review.body)}\n\n"
     msg += (
         f"📍<code>{escape(cafe.address)}</code>\n"
-        + f"{await return_emoji(cafe.distance)}<i>в {escape(str(round(cafe.distance, 2)))}км от тебя</i>"
+        + f"{await return_emoji(cafe.distance)}<i>в "
+        + f"{escape(str(round(cafe.distance, 2)))}км {'от меня' if from_me else 'от тебя'}</i>"
     )
     return msg
 

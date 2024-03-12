@@ -122,7 +122,14 @@ async def callback_scroll(
         context.user_data["selected_cafe"] = 0
         keyboard = (
             await keyboards.get_cafe_card_buttons(
-                1, len(context.user_data["cafes"]), context.user_data["cafes"][0].get('latitude'), context.user_data["cafes"][0].get('longitude')
+                1,
+                len(context.user_data["cafes"]),
+                context.user_data["cafes"][0].get(
+                    "latitude"
+                ),
+                context.user_data["cafes"][0].get(
+                    "longitude"
+                ),
             )
         )
         next_index = 0
@@ -137,7 +144,14 @@ async def callback_scroll(
     )
     keyboard = (
         await keyboards.get_cafe_card_buttons(
-            next_index + 1, len(cafes), context.user_data["cafes_coords"][next_index].get('latitude'), context.user_data["cafes_coords"][next_index].get('longitude')
+            next_index + 1,
+            len(cafes),
+            context.user_data["cafes_coords"][
+                next_index
+            ].get("latitude"),
+            context.user_data["cafes_coords"][
+                next_index
+            ].get("longitude"),
         )
     )
 
@@ -147,23 +161,38 @@ async def callback_scroll(
         reply_markup=keyboard,
     )
 
-async def callback_inline(
-        query: Update,
-        context: ContextTypes.DEFAULT_TYPE,
-):
-    lat = float(query.callback_query.data.split(':')[3])
-    lon = float(query.callback_query.data.split(':')[4])
 
-    await query.callback_query.edit_message_live_location(lat, lon)
+async def callback_inline(
+    query: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    lat = float(
+        query.callback_query.data.split(":")[3]
+    )
+    lon = float(
+        query.callback_query.data.split(":")[4]
+    )
+
+    await query.callback_query.edit_message_live_location(
+        lat, lon
+    )
+
 
 async def callback_send(
-        query: Update,
-        context: ContextTypes.DEFAULT_TYPE,
+    query: Update,
+    context: ContextTypes.DEFAULT_TYPE,
 ):
-    lat = float(query.callback_query.data.split(':')[2])
-    lon = float(query.callback_query.data.split(':')[3])
+    lat = float(
+        query.callback_query.data.split(":")[2]
+    )
+    lon = float(
+        query.callback_query.data.split(":")[3]
+    )
 
-    await query.effective_chat.send_location(lat, lon)
+    await query.effective_chat.send_location(
+        lat, lon
+    )
+
 
 async def callback_any(
     update: Update, context: CCT

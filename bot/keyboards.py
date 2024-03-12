@@ -45,12 +45,11 @@ async def get_start_keyboard(
         resize_keyboard=True,
     )
 
+
 async def get_cafe_card_ext_buttons(
-    latitude: float,
-        longitude: float
+    latitude: float, longitude: float
 ):
     buttons = [
-
         [
             InlineKeyboardButton(
                 text="Где это?",
@@ -62,7 +61,10 @@ async def get_cafe_card_ext_buttons(
 
 
 async def get_cafe_card_buttons(
-    current: int, total: int, lat: float, lon: float
+    current: int,
+    total: int,
+    lat: float,
+    lon: float,
 ):
     buttons = [
         [
