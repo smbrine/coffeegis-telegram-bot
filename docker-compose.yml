@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:16.2-bullseye
+    container_name: postgres-tgb
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: postgres
+    volumes:
+      - '${PV_LOC}/postgres/postgres-data:/var/lib/postgresql'
+    ports:
+      - "5431:5432"
+
+  redis:
+    image: redis:7.2.4
+    command: redis-server --save "" --appendonly no
+    container_name: redis
+    environment:
+      REDIS_PORT: 6379
+      REDIS_DATABASES: 16
+      REDIS_REPLICATION_MODE: master
+    volumes:
+      - ${PV_LOC}/redis/data:/data
+    restart: always
+    ports:
+      - "6379:6379"
