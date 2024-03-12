@@ -16,7 +16,8 @@ build/
 .idea
 develop-eggs/
 .env.local
-
+.env.*
+.env*
 dist/
 downloads/
 eggs/
@@ -103,6 +104,7 @@ dmypy.json
 .pyre/
 .pytype/
 cython_debug/
+!/.env.local
 !/.env.local
 !/.env.local
 !/.env.local
