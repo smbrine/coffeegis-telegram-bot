@@ -52,21 +52,19 @@ async def generate_profile_card(user):
         reg_date = reg_date.replace(eng, rus)
 
     msg = f"Телефон: {user.phone or 'нет'}\n\n"
-    msg += f"Уведомлять о новых кафе: {'да' if user.new_cafes_notify else 'нет'}\n"
-    msg += f"Всего общих поисковых запросов: {user.general_search_requests or 0}\n\n"
+    msg += f"Уведомлять о новых кафе: {'да' if user.new_cafes_notify else 'нет'}\n\n"
+    msg += f"Всего общих поисковых запросов: {user.general_search_requests or 0}\n"
     msg += f"Всего инлайн запросов: {user.inline_search_requests or 0}\n\n"
     msg += f"Дата регистрации: {reg_date}\n\n"
     msg += "Мои запросы:\n"
     if user.requests:
-        msg += json.dumps(
-            [
-                {k: str(v)}
-                for req in user.requests
-                for k, v in req.__dict__.items()
-            ],
-            ensure_ascii=False,
-            indent=4,
-        )
+        for req in user.requests:
+            for k, v in req.__dict__.items():
+                if k == "contents":
+                    msg += (f'\nНазвание: {v.get("name")}\n' +
+                            f'Адрес: {v.get("address")}\n')
+                elif k == "created_at":
+                    msg += f'Добавлен: {v}\n'
     else:
         msg += "Тут пока пусто..."
 

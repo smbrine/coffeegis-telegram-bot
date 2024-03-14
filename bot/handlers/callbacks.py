@@ -13,6 +13,7 @@ from telegram.ext import ContextTypes
 from telegram.ext._utils.types import CCT
 
 from app import settings
+from app.main import redis
 from bot import keyboards, handlers
 from bot.utils import notify_administrators
 from db import models
@@ -30,22 +31,30 @@ async def callback_submit(
         case "cafe":
             tasks = []
             if not (
-                submitting_cafe_data := context.user_data.get(
-                    "submitting_cafe_data"
+                await redis.hget(
+                    update.effective_user.id,
+                    "submitting_cafe_data:name",
                 )
             ):
                 return
             contents = {
-                "name": submitting_cafe_data[
-                    "name"
-                ],
-                "address": submitting_cafe_data[
-                    "address"
-                ],
+                "name": await redis.hget(
+                    update.effective_user.id,
+                    "submitting_cafe_data:name",
+                    encoding="utf-8",
+                ),
+                "address": await redis.hget(
+                    update.effective_user.id,
+                    "submitting_cafe_data:address",
+                    encoding="utf-8",
+                ),
             }
-            context.user_data["current_state"] = (
-                ""
+            await redis.hset(
+                update.effective_user.id,
+                "current_state",
+                "",
             )
+
             async with (
                 sessionmanager.session() as session
             ):
@@ -60,7 +69,6 @@ async def callback_submit(
             tasks.append(
                 notify_administrators(
                     bot,
-                    settings.ADMIN_CHAT_ID,
                     escape(
                         f"@{update.effective_user.username} submitted cafe:\n\n"
                     )
@@ -68,6 +76,62 @@ async def callback_submit(
                 )
             )
             msg = "Кофейня передана администраторам. Спасибо, что делаете нашего бота лучше!"
+            tasks.append(
+                update.callback_query.edit_message_text(
+                    msg,
+                    reply_markup=InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    text="Домой",
+                                    callback_data="reset",
+                                )
+                            ]
+                        ],
+                    ),
+                )
+            )
+            await asyncio.gather(*tasks)
+        case "message":
+            tasks = []
+            if not (
+                    message := await redis.hget(
+                        update.effective_user.id,
+                        "submitting_message",
+                        encoding='utf-8'
+                    )
+            ):
+                return
+            contents = {
+                "message": message,
+            }
+            await redis.hset(
+                update.effective_user.id,
+                "current_state",
+                "",
+            )
+
+            async with (
+                sessionmanager.session() as session
+            ):
+                tasks.append(
+                    models.Request.create(
+                        session,
+                        author_telegram_id=update.effective_user.id,
+                        request_type="message",
+                        contents=contents,
+                    )
+                )
+            tasks.append(
+                notify_administrators(
+                    bot,
+                    escape(
+                        f"@{update.effective_user.username} submitted message:\n\n"
+                    )
+                    + f'<pre language="json">{json.dumps(contents, ensure_ascii=False, indent=4)}</pre>',
+                )
+            )
+            msg = "Сообщение передано администраторам. Спасибо, что делаете нашего бота лучше!"
             tasks.append(
                 update.callback_query.edit_message_text(
                     msg,
@@ -97,15 +161,37 @@ async def callback_scroll(
 
     if direction == "pass":
         return
-    cafes = context.user_data.get("cafes")
+
+    cafes = json.loads(
+        await redis.hget(
+            query.from_user.id,
+            "cafes",
+            encoding="utf-8",
+            fallback="[]"
+        )
+    )
     if not cafes:
         await query.edit_message_text(
             "Произошла ошибка. Попробуй начать с команды /start",
         )
         return
-    current_index = context.user_data.get(
-        "selected_cafe", 0
+
+    cafes_coords = json.loads(
+        await redis.hget(
+            query.from_user.id,
+            "cafes_coords",
+            encoding="utf-8",
+        )
     )
+    current_index = int(
+        await redis.hget(
+            query.from_user.id,
+            "selected_cafe",
+            encoding="utf-8",
+            fallback=0,
+        )
+    )
+
     if direction == "backwards":
         next_index = (
             current_index - 1
@@ -119,39 +205,39 @@ async def callback_scroll(
             else 0
         )
     else:
-        context.user_data["selected_cafe"] = 0
+        await redis.hset(
+            query.from_user.id, "selected_cafe", 0
+        )
         keyboard = (
             await keyboards.get_cafe_card_buttons(
                 1,
-                len(context.user_data["cafes"]),
-                context.user_data["cafes"][0].get(
-                    "latitude"
-                ),
-                context.user_data["cafes"][0].get(
-                    "longitude"
-                ),
+                len(cafes),
+                cafes[0].get("latitude"),
+                cafes[0].get("longitude"),
             )
         )
         next_index = 0
         await query.edit_message_text(
-            context.user_data["cafes"][0],
+            cafes[0],
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
         )
 
-    context.user_data["selected_cafe"] = (
-        next_index
+    await redis.hset(
+        query.from_user.id,
+        "selected_cafe",
+        next_index,
     )
     keyboard = (
         await keyboards.get_cafe_card_buttons(
             next_index + 1,
             len(cafes),
-            context.user_data["cafes_coords"][
-                next_index
-            ].get("latitude"),
-            context.user_data["cafes_coords"][
-                next_index
-            ].get("longitude"),
+            cafes_coords[next_index].get(
+                "latitude"
+            ),
+            cafes_coords[next_index].get(
+                "longitude"
+            ),
         )
     )
 
@@ -194,6 +280,52 @@ async def callback_send(
     )
 
 
+async def callback_reset(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    tasks = []
+    user_id = update.effective_user.id
+    msg = "Отправь мне свою геопозицию и я подскажу где неподалёку есть кофейни из нашей подборки!"
+
+    async with (
+        sessionmanager.session() as session
+    ):
+        if not (
+            user_profile := await models.Profile.get_by_telegram_id(
+                session,
+                user_id,
+            )
+        ):
+            await models.Profile.create(
+                session,
+                user_telegram_id=user_id,
+            )
+            user_profile = await models.Profile.get_by_telegram_id(
+                session,
+                user_id,
+            )
+
+        is_phone_confirmed = (
+            user_profile.is_phone_confirmed
+        )
+
+    keyboard = await keyboards.get_start_keyboard(
+        is_phone_confirmed
+    )
+    await asyncio.gather(
+        *[
+            redis.hset(
+                user_id, "current_state", "start"
+            ),
+            update.callback_query.delete_message(),
+            update.effective_message.reply_text(
+                msg, reply_markup=keyboard
+            ),
+        ]
+    )
+
+
 async def callback_any(
     update: Update, context: CCT
 ) -> None:
@@ -205,9 +337,7 @@ async def callback_any(
         case "switch":
             await callback_scroll(query, context)
         case "reset":
-            await handlers.command_start(
-                update, context
-            )
+            await callback_reset(update, context)
         case "submit":
             await callback_submit(update, context)
         case "inline":

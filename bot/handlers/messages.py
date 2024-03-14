@@ -1,11 +1,16 @@
+import asyncio
+import json
+
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
     Update,
 )
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from app.main import redis
 from bot import handlers, keyboards
 from bot.main import pb
 from bot import generators
@@ -32,39 +37,86 @@ async def message_location(
         update.message.location.longitude,
         10,
     )
-    context.user_data["cafes"] = []
-    context.user_data["cafes_coords"] = []
 
+    cafes = []
+    cafes_coords = []
     for cafe in response.cafes:
         serialized_cafe = (
             await generators.generate_cafe_card(
                 cafe
             )
         )
-        context.user_data["cafes"].append(
-            serialized_cafe
-        )
-        context.user_data["cafes_coords"].append(
+
+        cafes.append(serialized_cafe)
+
+        cafes_coords.append(
             {
                 "latitude": cafe.latitude,
                 "longitude": cafe.longitude,
             }
         )
-    context.user_data["selected_cafe"] = 0
+
+    await asyncio.gather(
+        *[
+            redis.hset(
+                update.effective_user.id,
+                "cafes",
+                json.dumps(
+                    cafes, ensure_ascii=False
+                ),
+            ),
+            redis.hset(
+                update.effective_user.id,
+                "cafes_coords",
+                json.dumps(
+                    cafes_coords,
+                    ensure_ascii=False,
+                ),
+            ),
+            redis.hset(
+                update.effective_user.id,
+                "selected_cafe",
+                0,
+            ),
+        ]
+    )
+
     keyboard = (
         await keyboards.get_cafe_card_buttons(
             1,
-            len(context.user_data["cafes"]),
-            context.user_data["cafes_coords"][
-                0
-            ].get("latitude"),
-            context.user_data["cafes_coords"][
-                0
-            ].get("longitude"),
+            len(
+                json.loads(
+                    await redis.hget(
+                        update.effective_user.id,
+                        "cafes_coords",
+                        encoding="utf-8",
+                    )
+                )
+            ),
+            json.loads(
+                await redis.hget(
+                    update.effective_user.id,
+                    "cafes_coords",
+                    encoding="utf-8",
+                )
+            )[0].get("latitude"),
+            json.loads(
+                await redis.hget(
+                    update.effective_user.id,
+                    "cafes_coords",
+                    encoding="utf-8",
+                )
+            )[0].get("longitude"),
         )
     )
     await update.message.reply_text(
-        context.user_data["cafes"][0],
+        json.loads(
+            await redis.hget(
+                update.effective_user.id,
+                "cafes",
+                encoding="utf-8",
+            )
+        )[0],
         parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
     )
@@ -97,10 +149,16 @@ async def message_text(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     current_state = (
-        context.user_data.get("current_state")
-        or ""
+        await redis.hget(
+            update.effective_user.id,
+            "current_state",
+            encoding="utf-8",
+            fallback=''
+        )
     ).split(":")
+    print(current_state)
     if current_state[0] == "submitting":
+        print("CALLED")
         await handlers.state_submitting(
             update, context, current_state
         )
@@ -108,9 +166,13 @@ async def message_text(
         update.effective_message.text
         == "Предложить кофейню"
     ):
-        context.user_data["current_state"] = (
-            "submitting:cafe:name"
+
+        await redis.hset(
+            update.effective_user.id,
+            "current_state",
+            "submitting:cafe:name",
         )
+
         await update.message.reply_text(
             "Отправь мне название кофейни, "
             "которой тебе не хватает в нашем сервисе",
@@ -129,5 +191,32 @@ async def message_text(
         update.effective_message.text == "Профиль"
     ):
         await handlers.command_profile(
+            update, context
+        )
+    elif (
+        update.effective_message.text == "Сообщить об ошибке"
+    ):
+
+        await redis.hset(
+            update.effective_user.id,
+            "current_state",
+            "submitting:message",
+        )
+
+        await update.message.reply_text(
+            "Отправь мне сообщение для администрации и я передам его в целости и сохранности",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Назад",
+                            callback_data="reset",
+                        )
+                    ]
+                ]
+            ),
+        )
+    else:
+        await handlers.command_start(
             update, context
         )

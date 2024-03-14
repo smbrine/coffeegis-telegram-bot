@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     BIND_HOST: str
     POSTGRES_URL: str
     ADMIN_CHAT_ID: int
+    REDIS_URL: str
 
     class Config:
         env_file = ".env.local"

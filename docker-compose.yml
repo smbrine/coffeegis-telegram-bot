@@ -24,3 +24,14 @@ services:
     restart: always
     ports:
       - "6379:6379"
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - ${REDIS_COMMANDER_PORT}:8081

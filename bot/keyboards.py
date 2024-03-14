@@ -43,6 +43,8 @@ async def get_start_keyboard(
     return ReplyKeyboardMarkup(
         buttons,
         resize_keyboard=True,
+        one_time_keyboard=True,
+        is_persistent=True,
     )
 
 

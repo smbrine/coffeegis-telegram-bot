@@ -1,3 +1,4 @@
+import pickle
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -7,6 +8,8 @@ from fastapi import (
     HTTPException,
     Request,
 )
+import redis.asyncio as aioredis
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import (
@@ -19,6 +22,7 @@ from app import settings
 from bot.main import bot, dp
 from db import models
 from db.main import get_db, sessionmanager
+from utils import RedisWrapper
 
 
 @asynccontextmanager
@@ -47,6 +51,8 @@ async def lifespan(fastapi_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+redis = RedisWrapper(settings.REDIS_URL)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -72,6 +78,7 @@ async def webhook(
 
     upd_type = (data.keys() - {"update_id"}).pop()
     user = upd.effective_user
+
     if not (
         user_in_db := await models.User.get_by_telegram_id(
             db, user.id

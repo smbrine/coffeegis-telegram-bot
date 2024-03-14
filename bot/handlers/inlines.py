@@ -1,3 +1,4 @@
+import pickle
 from uuid import uuid4
 
 from telegram import (
@@ -12,12 +13,14 @@ from bot import generators
 from bot.main import pb
 from db import models
 from db.main import sessionmanager
+from app.main import redis
 
 
 async def inline_any(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
+
     async with (
         sessionmanager.session() as session
     ):
@@ -38,8 +41,16 @@ async def inline_any(
         )
 
     query = update.inline_query.query
-    lat = update.inline_query.location.latitude
-    lon = update.inline_query.location.longitude
+    lat = (
+        update.inline_query.location.latitude
+        if update.inline_query.location
+        else 0
+    )
+    lon = (
+        update.inline_query.location.longitude
+        if update.inline_query.location
+        else 0
+    )
 
     if not query:
         return
