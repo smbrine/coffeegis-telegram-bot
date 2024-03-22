@@ -19,12 +19,19 @@ async def return_emoji(distance):
 
 async def generate_cafe_card(cafe, from_me=False):
     msg = f"<b>{escape(cafe.name)}</b>\n\n"
-    if cafe.review.title:
-        msg += f"{escape(cafe.review.body)}\n\n"
+    msg += f"{escape(cafe.description.location_description)}"
+    msg += f"{escape(cafe.description.interior_description)}"
+    msg += f"{escape(cafe.description.menu_description)}"
+    msg += f"{escape(cafe.description.place_history)}"
+    msg += f"{escape(cafe.description.arbitrary_description)}"
+    msg += '\n\n'
+    if cafe.roaster.name:
+        msg += f'Обжарщик: {escape(cafe.roaster.name)}\n'
+        msg += f'Сайт: {escape(cafe.roaster.website)}\n' if cafe.roaster.website else '\n'
     msg += (
         f"📍<code>{escape(cafe.address)}</code>\n"
-        + f"{await return_emoji(cafe.distance)}<i>в "
-        + f"{escape(str(round(cafe.distance, 2)))}км {'от меня' if from_me else 'от тебя'}</i>"
+        + f"{await return_emoji(cafe.distance)}в "
+        + f"{escape(str(round(cafe.distance, 2)))}км {'от меня' if from_me else 'от тебя'}"
     )
     return msg
 

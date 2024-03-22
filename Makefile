@@ -9,3 +9,6 @@ black:
 
 watchdog:
 	find . ! -path './.git/*' ! -path './.idea/*' | entr -r python -m bot.main
+
+migrate:
+	alembic upgrade head

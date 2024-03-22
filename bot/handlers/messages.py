@@ -156,7 +156,6 @@ async def message_text(
             fallback=''
         )
     ).split(":")
-    print(current_state)
     if current_state[0] == "submitting":
         print("CALLED")
         await handlers.state_submitting(

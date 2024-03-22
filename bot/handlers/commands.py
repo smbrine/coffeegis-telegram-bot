@@ -3,6 +3,8 @@ import pickle
 
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+
 
 from bot import generators, keyboards
 from db import models
@@ -17,7 +19,7 @@ async def command_start(
     tasks = []
     user_id = update.effective_user.id
     msg = (
-        "Привет! CoffeeGIS - сервис поиска кофеен. "
+        'Привет! <a href="https://t.me/coffegis">CoffeeGIS</a> — сервис поиска specialty кофеен. '
         "Отправь мне свою геопозицию и я подскажу где неподалёку есть кофейни из нашей подборки!"
     )
     if not (
@@ -62,6 +64,7 @@ async def command_start(
             update.message.reply_text(
                 msg,
                 reply_markup=keyboard,
+                parse_mode=ParseMode.HTML
             ),
             redis.hset(
                 user_id, "current_state", "start"
