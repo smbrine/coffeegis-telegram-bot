@@ -14,11 +14,12 @@ from telegram.ext import (
     filters,
 )
 from app import settings
-from utils import ProtoWrapper
+from utils import ProtoWrapper, ImagesWrapper
 
 bot = Bot(token=settings.TG_BOT_KEY)
 dp = ApplicationBuilder().bot(bot).build()
-pb = ProtoWrapper(host="localhost:50051")
+pb = ProtoWrapper(host="geoprocessor-grpc:50051")
+img_svc = ImagesWrapper(host="images-cdn:50051")
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",

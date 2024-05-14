@@ -43,6 +43,7 @@ message Description {
   string menu_description = 3;
   string place_history = 4;
   string arbitrary_description = 5;
+  string image_uuid = 6;
 }
 
 message Roaster {

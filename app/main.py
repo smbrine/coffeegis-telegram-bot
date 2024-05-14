@@ -31,7 +31,7 @@ async def lifespan(fastapi_app: FastAPI):
 
     if bot:
         response = await bot.get_webhook_info()
-        webhook_url = f"{settings.PUBLIC_ADDR}/webhook?token={settings.TG_BOT_KEY}"
+        webhook_url = f"{settings.PUBLIC_ADDR}/coffeegis/webhook?token={settings.TG_BOT_KEY}"
         while response.url != webhook_url:
             await bot.set_webhook(
                 url=webhook_url,
@@ -62,7 +62,7 @@ app.add_middleware(
 Instrumentator().instrument(app).expose(app)
 
 
-@app.post("/webhook")
+@app.post("/coffeegis/webhook")
 async def webhook(
     request: Request,
     token: str,
@@ -74,7 +74,6 @@ async def webhook(
         )
     data = await request.json()
     upd = Update.de_json(data, bot)
-    await dp.process_update(upd)
 
     upd_type = (data.keys() - {"update_id"}).pop()
     user = upd.effective_user
@@ -94,6 +93,8 @@ async def webhook(
             language_code=user.language_code,
             is_premium=user.is_premium,
         )
+
+    await dp.process_update(upd)
 
     await user_in_db.add_update(
         db,

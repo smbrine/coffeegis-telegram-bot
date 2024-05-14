@@ -19,15 +19,23 @@ async def return_emoji(distance):
 
 async def generate_cafe_card(cafe, from_me=False):
     msg = f"<b>{escape(cafe.name)}</b>\n\n"
-    msg += f"{escape(cafe.description.location_description)}"
-    msg += f"{escape(cafe.description.interior_description)}"
-    msg += f"{escape(cafe.description.menu_description)}"
-    msg += f"{escape(cafe.description.place_history)}"
-    msg += f"{escape(cafe.description.arbitrary_description)}"
-    msg += '\n\n'
+    msg += " ".join(
+        [
+            f"{escape(cafe.description.location_description)}",
+            f"{escape(cafe.description.interior_description)}",
+            f"{escape(cafe.description.menu_description)}",
+            f"{escape(cafe.description.place_history)}",
+            f"{escape(cafe.description.arbitrary_description)}",
+        ]
+    )
+    msg += "\n\n"
     if cafe.roaster.name:
-        msg += f'Обжарщик: {escape(cafe.roaster.name)}\n'
-        msg += f'Сайт: {escape(cafe.roaster.website)}\n' if cafe.roaster.website else '\n'
+        msg += f"Обжарщик: {escape(cafe.roaster.name)}\n"
+        msg += (
+            f"Сайт: {escape(cafe.roaster.website)}\n"
+            if cafe.roaster.website
+            else "\n"
+        )
     msg += (
         f"📍<code>{escape(cafe.address)}</code>\n"
         + f"{await return_emoji(cafe.distance)}в "
@@ -68,10 +76,12 @@ async def generate_profile_card(user):
         for req in user.requests:
             for k, v in req.__dict__.items():
                 if k == "contents":
-                    msg += (f'\nНазвание: {v.get("name")}\n' +
-                            f'Адрес: {v.get("address")}\n')
+                    msg += (
+                        f'\nНазвание: {v.get("name")}\n'
+                        + f'Адрес: {v.get("address")}\n'
+                    )
                 elif k == "created_at":
-                    msg += f'Добавлен: {v}\n'
+                    msg += f"Добавлен: {v}\n"
     else:
         msg += "Тут пока пусто..."
 

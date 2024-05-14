@@ -64,7 +64,7 @@ async def command_start(
             update.message.reply_text(
                 msg,
                 reply_markup=keyboard,
-                parse_mode=ParseMode.HTML
+                parse_mode=ParseMode.HTML,
             ),
             redis.hset(
                 user_id, "current_state", "start"

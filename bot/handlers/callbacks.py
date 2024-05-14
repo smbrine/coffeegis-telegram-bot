@@ -1,7 +1,10 @@
 import asyncio
+import base64
 import json
+import pickle
 from html import escape
 
+import telegram
 from telegram import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -95,11 +98,11 @@ async def callback_submit(
         case "message":
             tasks = []
             if not (
-                    message := await redis.hget(
-                        update.effective_user.id,
-                        "submitting_message",
-                        encoding='utf-8'
-                    )
+                message := await redis.hget(
+                    update.effective_user.id,
+                    "submitting_message",
+                    encoding="utf-8",
+                )
             ):
                 return
             contents = {
@@ -167,13 +170,19 @@ async def callback_scroll(
             query.from_user.id,
             "cafes",
             encoding="utf-8",
-            fallback="[]"
+            fallback="[]",
         )
     )
     if not cafes:
-        await query.edit_message_text(
-            "Произошла ошибка. Попробуй начать с команды /start",
-        )
+        error_msg = "Произошла ошибка. Попробуй начать с команды /start"
+        try:
+            await query.edit_message_text(
+                error_msg,
+            )
+        except telegram.error.BadRequest:
+            await bot.send_message(
+                query.from_user.id, error_msg
+            )
         return
 
     cafes_coords = json.loads(
@@ -181,6 +190,11 @@ async def callback_scroll(
             query.from_user.id,
             "cafes_coords",
             encoding="utf-8",
+        )
+    )
+    cafes_images = json.loads(
+        await redis.hget(
+            query.from_user.id, "cafes_images"
         )
     )
     current_index = int(
@@ -191,6 +205,8 @@ async def callback_scroll(
             fallback=0,
         )
     )
+    if len(cafes) == 1:
+        return
 
     if direction == "backwards":
         next_index = (
@@ -217,10 +233,15 @@ async def callback_scroll(
             )
         )
         next_index = 0
-        await query.edit_message_text(
+        await query.edit_message_caption(
             cafes[0],
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+        )
+        await query.edit_message_media(
+            pickle.loads(
+                base64.b64decode(cafes_images[0])
+            )
         )
 
     await redis.hset(
@@ -240,12 +261,25 @@ async def callback_scroll(
             ),
         )
     )
-
-    await query.edit_message_text(
+    media = pickle.loads(
+        base64.b64decode(cafes_images[next_index])
+    )
+    await query.delete_message()
+    await bot.send_photo(
+        query.from_user.id,
+        media,
         cafes[next_index],
         parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
     )
+    # await query.edit_message_media(
+    #     media
+    # )
+    # await query.edit_message_caption(
+    #     cafes[next_index],
+    #     parse_mode=ParseMode.HTML,
+    #     reply_markup=keyboard,
+    # )
 
 
 async def callback_inline(

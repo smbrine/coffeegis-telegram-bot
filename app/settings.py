@@ -6,7 +6,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     TG_BOT_KEY: str
-    DEBUG: bool = False
+    DEBUG: bool = True
     PUBLIC_ADDR: str
     BIND_PORT: int
     BIND_HOST: str
@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     ADMIN_CHAT_ID: int
     REDIS_URL: str
 
-    class Config:
-        env_file = ".env.local"
+    # class Config:
+    #     env_file = ".env.local"
 
 
 settings = Settings()

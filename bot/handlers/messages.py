@@ -1,6 +1,9 @@
 import asyncio
+import base64
 import json
+import pickle
 
+import grpc
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -11,8 +14,9 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from app.main import redis
+
 from bot import handlers, keyboards
-from bot.main import pb
+from bot.main import pb, img_svc
 from bot import generators
 from db import models
 from db.main import sessionmanager
@@ -39,7 +43,17 @@ async def message_location(
     )
 
     cafes = []
+    # images = [
+    #     open(
+    #         "./deploy_data/test_images/" + name,
+    #         "rb",
+    #     ).read()
+    #     for name in ["1.png", "2.png", "3.webp"]
+    # ]
+
     cafes_coords = []
+    cafes_images = []
+    _i = 0
     for cafe in response.cafes:
         serialized_cafe = (
             await generators.generate_cafe_card(
@@ -55,6 +69,41 @@ async def message_location(
                 "longitude": cafe.longitude,
             }
         )
+        print(cafe)
+        try:
+            image_bytes = (
+                await img_svc.GetImage(
+                    cafe.description.image_uuid
+                )
+            ).content
+            print("Found image")
+
+        except grpc.aio._call.AioRpcError as e:
+            print("Defaulting image")
+            print(e)
+            image_bytes = open(
+                "./data/default.webp",
+                "rb",
+            ).read()
+
+        image = base64.b64encode(
+            pickle.dumps(image_bytes)
+        ).decode("utf-8")
+
+        cafes_images.append(image)
+        # if _i < 3:
+        #     cafes_images.append(
+        #         base64.b64encode(
+        #             pickle.dumps(images[_i])
+        #         ).decode("utf-8")
+        #     )
+        # else:
+        #     cafes_images.append(
+        #         base64.b64encode(
+        #             pickle.dumps(images[2])
+        #         ).decode("utf-8")
+        #     )
+        # _i += 1
 
     await asyncio.gather(
         *[
@@ -70,6 +119,14 @@ async def message_location(
                 "cafes_coords",
                 json.dumps(
                     cafes_coords,
+                    ensure_ascii=False,
+                ),
+            ),
+            redis.hset(
+                update.effective_user.id,
+                "cafes_images",
+                json.dumps(
+                    cafes_images,
                     ensure_ascii=False,
                 ),
             ),
@@ -109,7 +166,19 @@ async def message_location(
             )[0].get("longitude"),
         )
     )
-    await update.message.reply_text(
+
+    raw = base64.b64decode(
+        json.loads(
+            await redis.hget(
+                update.effective_user.id,
+                "cafes_images",
+            )
+        )[0]
+    )
+
+    image = pickle.loads(raw)
+    await update.message.reply_photo(
+        image,
         json.loads(
             await redis.hget(
                 update.effective_user.id,
@@ -153,7 +222,7 @@ async def message_text(
             update.effective_user.id,
             "current_state",
             encoding="utf-8",
-            fallback=''
+            fallback="",
         )
     ).split(":")
     if current_state[0] == "submitting":
@@ -193,7 +262,8 @@ async def message_text(
             update, context
         )
     elif (
-        update.effective_message.text == "Сообщить об ошибке"
+        update.effective_message.text
+        == "Сообщить об ошибке"
     ):
 
         await redis.hset(

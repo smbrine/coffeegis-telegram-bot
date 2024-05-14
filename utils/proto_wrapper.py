@@ -27,7 +27,7 @@ class ProtoWrapper:
                 latitude=lat,
                 longitude=lon,
                 len=len,
-                page=0,
+                page=page,
             )
 
             return await stub.ListCafesPerCity(
@@ -53,7 +53,7 @@ class ProtoWrapper:
                 latitude=lat,
                 longitude=lon,
                 len=len,
-                page=0,
+                page=page,
             )
 
             return await stub.SearchCafesByQueryPerCity(
