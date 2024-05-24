@@ -34,7 +34,7 @@ class RedisWrapper:
         name,
         key,
         value,
-        ex=10,
+        ex=3600,
         *args,
         **kwargs
     ):
@@ -43,3 +43,6 @@ class RedisWrapper:
         )
         await self.r.expire(name, ex)
         return r
+
+    async def drop_cache(self, key):
+        await self.r.expire(key, 1)

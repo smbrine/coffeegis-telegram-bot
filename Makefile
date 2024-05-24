@@ -17,3 +17,6 @@ migrate:
 docker:
 	docker build -t smbrine/coffeegis-telegram-bot:v1 .
 	docker push smbrine/coffeegis-telegram-bot:v1
+
+postgres:
+	docker run -ePOSTGRES_PASSWORD=password -p5432:5432 postgres

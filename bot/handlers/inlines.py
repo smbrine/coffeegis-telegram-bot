@@ -52,8 +52,10 @@ async def inline_any(
         else 0
     )
 
-    if not query:
-        return
+    # if not query:
+    #     return await pb.SearchCafesByQueryPerCity(
+    #         "", lat, lon, 3, 0
+    #     )
 
     response = await pb.SearchCafesByQueryPerCity(
         query, lat, lon, 3, 0

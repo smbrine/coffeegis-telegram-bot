@@ -42,7 +42,6 @@ async def lifespan(fastapi_app: FastAPI):
             )
         await dp.initialize()
     yield
-
     if (
         sessionmanager._engine is not None
     ):  # pylint: disable=W0212  #
@@ -77,7 +76,6 @@ async def webhook(
 
     upd_type = (data.keys() - {"update_id"}).pop()
     user = upd.effective_user
-
     if not (
         user_in_db := await models.User.get_by_telegram_id(
             db, user.id
@@ -95,7 +93,6 @@ async def webhook(
         )
 
     await dp.process_update(upd)
-
     await user_in_db.add_update(
         db,
         update_id=upd.update_id,

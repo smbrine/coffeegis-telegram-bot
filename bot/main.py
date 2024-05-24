@@ -45,6 +45,30 @@ def main() -> None:
     )
     dp.add_handler(
         CommandHandler(
+            "all_cafes",
+            handlers.admin_command_all_cafes,
+        )
+    )
+    dp.add_handler(
+        CommandHandler(
+            "all_cafes_list",
+            handlers.admin_command_all_cafes_list,
+        )
+    )
+    dp.add_handler(
+        CommandHandler(
+            "all_cafes_map",
+            handlers.admin_command_all_cafes_map,
+        )
+    )
+    dp.add_handler(
+        CommandHandler(
+            "drop_cache",
+            handlers.admin_command_drop_cache,
+        )
+    )
+    dp.add_handler(
+        CommandHandler(
             "profile", handlers.command_profile
         )
     )

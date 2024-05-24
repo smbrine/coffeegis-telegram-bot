@@ -8,6 +8,7 @@ from telegram import (
 
 async def get_start_keyboard(
     is_phone_confirmed: bool,
+    is_admin: bool = False,
 ):
     buttons = [
         [
@@ -91,3 +92,45 @@ async def get_cafe_card_buttons(
         ],
     ]
     return InlineKeyboardMarkup(buttons)
+
+
+async def get_settings_keyboard(
+    is_phone_confirmed: bool,
+):
+    buttons = [
+        [
+            KeyboardButton(
+                text="Искать рядом",
+                request_location=True,
+            ),
+        ],
+        [
+            KeyboardButton(
+                text="Профиль",
+            ),
+        ]
+        + (
+            [
+                KeyboardButton(
+                    text="Подтвердить номер телефона",
+                    request_contact=True,
+                ),
+            ]
+            if not is_phone_confirmed
+            else []
+        ),
+        [
+            KeyboardButton(
+                text="Предложить кофейню",
+            ),
+            KeyboardButton(
+                text="Сообщить об ошибке",
+            ),
+        ],
+    ]
+    return ReplyKeyboardMarkup(
+        buttons,
+        resize_keyboard=True,
+        one_time_keyboard=True,
+        is_persistent=True,
+    )

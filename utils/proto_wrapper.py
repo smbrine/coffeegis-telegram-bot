@@ -16,6 +16,8 @@ class ProtoWrapper:
         lon: float,
         len: int = 5,
         page: int = 0,
+        bypass_cache: bool = False,
+        drop_cache: bool = False,
     ):
         async with aio.insecure_channel(
             self.host
@@ -28,6 +30,8 @@ class ProtoWrapper:
                 longitude=lon,
                 len=len,
                 page=page,
+                bypass_cache=bypass_cache,
+                drop_cache=drop_cache,
             )
 
             return await stub.ListCafesPerCity(
@@ -41,6 +45,8 @@ class ProtoWrapper:
         lon: float,
         len: int = 3,
         page: int = 0,
+        bypass_cache: bool = False,
+        drop_cache: bool = False,
     ):
         async with aio.insecure_channel(
             self.host

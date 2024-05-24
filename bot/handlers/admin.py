@@ -1,74 +1,93 @@
 import asyncio
 import base64
+import io
 import json
 import pickle
+from datetime import datetime
 
 import grpc
 from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    ReplyKeyboardMarkup,
     Update,
 )
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from app.main import redis
+from bot import generators, keyboards
 
-from bot import handlers, keyboards
-from bot.main import pb, img_svc
-from bot import generators
+from bot.main import img_svc, pb
 from db import models
 from db.main import sessionmanager
 
 
-async def message_location(
+async def admin_command_all_cafes_list(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
+    user_id = update.effective_user.id
     async with (
         sessionmanager.session() as session
     ):
         user_profile = await models.Profile.get_by_telegram_id(
-            session, update.effective_user.id
+            session,
+            user_id,
+            joined=True,
         )
-        await user_profile.increment_general_requests(
-            session
+
+        await redis.hset(
+            user_id,
+            "profile",
+            pickle.dumps(user_profile),
         )
-    amount_of_cafes = 50
+        if not user_profile.is_admin:
+            return
     response = await pb.ListCafesPerCity(
-        update.message.location.latitude,
-        update.message.location.longitude,
-        amount_of_cafes,
-        bypass_cache=user_profile.is_admin,
+        0,
+        0,
+        100,
+        bypass_cache=True,
+    )
+    list = ""
+    for i, cafe in enumerate(response.cafes):
+        list += f"{i+1}. {cafe.name}: {cafe.address}.\n"
+    await update.message.reply_text(list)
+
+
+async def admin_command_all_cafes(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    user_id = update.effective_user.id
+    async with (
+        sessionmanager.session() as session
+    ):
+        user_profile = await models.Profile.get_by_telegram_id(
+            session,
+            user_id,
+            joined=True,
+        )
+        await redis.hset(
+            user_id,
+            "profile",
+            pickle.dumps(user_profile),
+        )
+        if not user_profile.is_admin:
+            return
+
+    response = await pb.ListCafesPerCity(
+        0,
+        0,
+        100,
+        bypass_cache=True,
     )
 
     cafes = []
 
     cafes_coords = []
     cafes_images = []
-    raw_cafes = []
-    search_distance = (
-        user_profile.preferences.max_search_distance
-        or 5
-    )
-
-    if (
-        response.cafes[4].distance
-        < search_distance
-    ):
-        for cafe in response.cafes:
-            if (
-                not cafe.distance
-                <= search_distance
-            ):
-                break
-            raw_cafes.append(cafe)
-    else:
-        raw_cafes = response.cafes[:5]
 
     # TODO: send placeholder if no cafes in response
-    for cafe in raw_cafes[:10]:
+    for cafe in response.cafes:
 
         serialized_cafe = (
             await generators.generate_cafe_card(
@@ -84,14 +103,18 @@ async def message_location(
                 "longitude": cafe.longitude,
             }
         )
+        print(cafe)
         try:
             image_bytes = (
                 await img_svc.GetImage(
                     cafe.description.image_uuid
                 )
             ).content
+            print("Found image")
 
         except grpc.aio._call.AioRpcError as e:
+            print("Defaulting image")
+            print(e)
             image_bytes = open(
                 "./data/default.webp",
                 "rb",
@@ -143,6 +166,7 @@ async def message_location(
             encoding="utf-8",
         )
     )
+    print(cafes_coords)
     keyboard = (
         await keyboards.get_cafe_card_buttons(
             1,
@@ -176,101 +200,69 @@ async def message_location(
     )
 
 
-async def message_contact(
+async def admin_command_all_cafes_map(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
+    user_id = update.effective_user.id
     async with (
         sessionmanager.session() as session
     ):
         user_profile = await models.Profile.get_by_telegram_id(
-            session, update.effective_user.id
-        )
-        if await user_profile.confirm_phone(
             session,
-            int(
-                update.message.contact.phone_number
-            ),
-        ):
-            await update.message.reply_text(
-                "Вы успешно подтвердили номер телефона!",
-                parse_mode=ParseMode.HTML,
-            )
+            user_id,
+            joined=True,
+        )
+        await redis.hset(
+            user_id,
+            "profile",
+            pickle.dumps(user_profile),
+        )
+        if not user_profile.is_admin:
+            return
+    response = await pb.ListCafesPerCity(
+        0,
+        0,
+        100,
+        bypass_cache=True,
+    )
+    csv = '"name","lat","lon","address"\n'
+    for i, cafe in enumerate(response.cafes):
+        csv += f'"{cafe.name}","{cafe.latitude}","{cafe.longitude}","{cafe.address}"\n'
+    csv_bytes = io.BytesIO(csv.encode("utf-8"))
+    await update.message.reply_document(
+        csv_bytes,
+        filename=f"map-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv",
+    )
 
 
-async def message_text(
+async def admin_command_drop_cache(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    current_state = (
-        await redis.hget(
-            update.effective_user.id,
-            "current_state",
-            encoding="utf-8",
-            fallback="",
-        )
-    ).split(":")
-    if current_state[0] == "submitting":
-        print("CALLED")
-        await handlers.state_submitting(
-            update, context, current_state
-        )
-    elif (
-        update.effective_message.text
-        == "Предложить кофейню"
+    user_id = update.effective_user.id
+    async with (
+        sessionmanager.session() as session
     ):
-
+        user_profile = await models.Profile.get_by_telegram_id(
+            session,
+            user_id,
+            joined=True,
+        )
+        if not user_profile.is_admin:
+            return
         await redis.hset(
-            update.effective_user.id,
-            "current_state",
-            "submitting:cafe:name",
+            user_id,
+            "profile",
+            pickle.dumps(user_profile),
         )
 
-        await update.message.reply_text(
-            "Отправь мне название кофейни, "
-            "которой тебе не хватает в нашем сервисе",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "Назад",
-                            callback_data="reset",
-                        )
-                    ]
-                ]
-            ),
+    tasks = []
+    tasks.append(redis.drop_cache(user_id))
+    tasks.append(
+        pb.ListCafesPerCity(
+            lat=0, lon=0, drop_cache=True
         )
-    elif (
-        update.effective_message.text == "Профиль"
-    ):
-        await handlers.command_profile(
-            update, context
-        )
-    elif (
-        update.effective_message.text
-        == "Сообщить об ошибке"
-    ):
+    )
 
-        await redis.hset(
-            update.effective_user.id,
-            "current_state",
-            "submitting:message",
-        )
-
-        await update.message.reply_text(
-            "Отправь мне сообщение для администрации и я передам его в целости и сохранности",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "Назад",
-                            callback_data="reset",
-                        )
-                    ]
-                ]
-            ),
-        )
-    else:
-        await handlers.command_start(
-            update, context
-        )
+    await asyncio.gather(*tasks)

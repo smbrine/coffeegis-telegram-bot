@@ -1,8 +1,8 @@
-"""fixed profile rel 2
+"""fixing user preferences
 
-Revision ID: d73d24d088ba
-Revises: 374feb609c7a
-Create Date: 2024-03-11 23:16:09.373369
+Revision ID: 184b39bf4a00
+Revises: c22da147fc67
+Create Date: 2024-05-20 13:45:02.476732
 
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "d73d24d088ba"
-down_revision: Union[str, None] = "374feb609c7a"
+revision: str = "184b39bf4a00"
+down_revision: Union[str, None] = "c22da147fc67"
 branch_labels: Union[str, Sequence[str], None] = (
     None
 )

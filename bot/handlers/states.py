@@ -82,19 +82,17 @@ async def state_submitting_cafe(
         )
     elif current_state[2] == "address":
         tasks = []
-        tasks.append(
-            redis.hset(
-                update.effective_user.id,
-                "submitting_cafe_data:address",
-                update.effective_message.text,
-            )
+        await redis.hset(
+            update.effective_user.id,
+            "submitting_cafe_data:address",
+            update.effective_message.text,
         )
 
         tasks.append(
             update.message.reply_text(
                 escape("Твоя кофейня:\n\n")
-                + f"<b>{escape((await redis.hget(update.effective_user.id,'submitting_cafe_data:name')).decode('utf-8'))}</b>\n"
-                + f"<code>{escape((await redis.hget(update.effective_user.id,'submitting_cafe_data:address')).decode('utf-8'))}</code>",
+                + f"<b>{escape((await redis.hget(update.effective_user.id,'submitting_cafe_data:name', encoding='utf-8', fallback='Нет названия')))}</b>\n"
+                + f"<code>{escape((await redis.hget(update.effective_user.id,'submitting_cafe_data:address', encoding='utf-8', fallback='Нет адреса')))}</code>",
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup(
                     [

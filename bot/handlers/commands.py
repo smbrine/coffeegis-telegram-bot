@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
-
+from app import settings
 from bot import generators, keyboards
 from db import models
 from db.main import sessionmanager
@@ -39,6 +39,13 @@ async def command_start(
                 await models.Profile.create(
                     session,
                     user_telegram_id=user_id,
+                    is_admin=False,
+                )
+                await models.Preferences.create(
+                    session,
+                    user_telegram_id=user_id,
+                    new_cafes_notify=False,
+                    max_search_distance=5,
                 )
                 user_profile = await models.Profile.get_by_telegram_id(
                     session,
@@ -97,3 +104,9 @@ async def command_profile(
         user_profile,
     )
     await update.message.reply_text(msg)
+
+
+async def command_settings(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+): ...

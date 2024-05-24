@@ -271,6 +271,7 @@ async def callback_scroll(
         cafes[next_index],
         parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
+        disable_notification=True,
     )
     # await query.edit_message_media(
     #     media

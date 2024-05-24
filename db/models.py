@@ -19,6 +19,7 @@ from sqlalchemy.exc import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import (
+    joinedload,
     relationship,
     selectinload,
 )
@@ -202,9 +203,7 @@ class Profile(BaseModel):
         index=True,
         unique=True,
     )
-    new_cafes_notify = Column(
-        Boolean, default=False
-    )
+
     is_active = Column(Boolean, default=True)
     general_search_requests = Column(
         Integer, default=0, nullable=False
@@ -213,11 +212,21 @@ class Profile(BaseModel):
         BigInteger, default=0, nullable=False
     )
     is_phone_confirmed = Column(
-        Integer, default=False, nullable=False
+        Boolean, default=False, nullable=False
     )
-
+    is_admin = Column(
+        Boolean, default=False, nullable=True
+    )
     requests = relationship(
         "Request", back_populates="author"
+    )
+
+    preferences = relationship(
+        "Preferences",
+        back_populates="profile",
+        cascade="all, delete, delete-orphan",
+        lazy="joined",
+        uselist=False,
     )
 
     @classmethod
@@ -232,11 +241,12 @@ class Profile(BaseModel):
         )
         if joined:
             stmt = stmt.options(
-                selectinload(cls.requests)
+                selectinload(cls.requests),
+                selectinload(cls.preferences),
             )
         res = await db.execute(stmt)
 
-        return res.scalar_one_or_none()
+        return res.unique().scalar_one_or_none()
 
     async def increment_general_requests(
         self, db: AsyncSession
@@ -310,3 +320,27 @@ class Request(BaseModel):
         default="arbitrary",
     )
     contents = Column(JSONB, nullable=False)
+
+
+class Preferences(BaseModel):
+    __tablename__ = "preferences"
+
+    profile = relationship(
+        "Profile", back_populates="preferences"
+    )
+    user_telegram_id = Column(
+        BigInteger,
+        ForeignKey(
+            "profiles.user_telegram_id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        unique=True,
+    )
+
+    new_cafes_notify = Column(
+        Boolean, default=False
+    )
+    max_search_distance = Column(
+        Integer, default=5
+    )
